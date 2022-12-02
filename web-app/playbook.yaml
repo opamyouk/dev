@@ -1,0 +1,71 @@
+---
+- name: Deploy Web application
+  hosts: db_*
+  tasks:
+    - name: Install all required dependencies
+      apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+         - python3
+         - python-setuptools
+         - python-dev-is-python3
+         - python3-dev
+         - default-libmysqlclient-dev
+         - build-essential
+         - python3-pip
+         - mysql-server
+         - mysql-client
+      become: true
+
+    - name: Installl mysqlclient
+      pip:
+       name: "{{ item }}"
+      loop:
+         - mysqlclient
+      become: true
+
+    - name: Start Mysql Service
+      service:
+        name: mysql
+        state: started
+        enabled: yes
+      become: true
+
+
+    - name: Create application
+      mysql_db:
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: employee_db
+        state: present
+        login_user: "root"
+      become: true
+
+    - name: Create database user
+      mysql_user:
+        login_user: "root"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+        name: db_user
+        password: Passw0rd
+        priv: '*.*:ALL'
+        state: present
+        host: '%'
+      become: true
+
+    - name: Installl Flask
+      pip:
+       name: "{{ item }}"
+      loop:
+         - flask
+         - flask-mysql
+      become: true
+
+    - name: Copy source code Flask
+      copy:
+        src: app.py
+        dest: /opt/app.py
+      become: true
+
+    - name: Start Web mysql-server
+      shell: FLASK_APP=/opt/app.py nohup  flask run --host=0.0.0.0 &
+      become: true
